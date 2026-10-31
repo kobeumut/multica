@@ -1,4 +1,9 @@
 {
+  "autorouter": {
+    "add": "Ajouter AutoRouter",
+    "categories": "Catégories de routage",
+    "local_requirement": "Choisissez le runtime avec Ollama local et kev:0.8b-mlx-bf16 installé. AutoRouter choisit un agent autorisé selon sa description et ses catégories pour les nouveaux chats et les attributions de tâches."
+  },
   "page": {
     "title": "Agents",
     "learn_more": "En savoir plus →",

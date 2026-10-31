@@ -1,4 +1,9 @@
 {
+  "autorouter": {
+    "add": "AutoRouter を追加",
+    "categories": "ルーティングカテゴリ",
+    "local_requirement": "ローカル Ollama と kev:0.8b-mlx-bf16 がインストールされたランタイムを選択してください。AutoRouter は新しいチャットとタスク割り当てで、説明とカテゴリから許可されたエージェントを選択します。"
+  },
   "page": {
     "title": "エージェント",
     "learn_more": "詳細はこちら →",

@@ -591,7 +591,8 @@
     "description": "タスクと skill のラベルは別々です。",
     "scopes": {
       "issue": "タスク",
-      "skill": "Skill"
+      "skill": "Skill",
+      "agent": "エージェントルーティング"
     },
     "search_placeholder": "名前または説明で絞り込み...",
     "new_label": "新しいラベル",

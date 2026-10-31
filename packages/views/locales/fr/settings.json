@@ -596,7 +596,8 @@
     "description": "Les étiquettes des tâches et des skills sont distinctes.",
     "scopes": {
       "issue": "Tâches",
-      "skill": "Skills"
+      "skill": "Skills",
+      "agent": "Routage des agents"
     },
     "search_placeholder": "Filtrer par nom ou description...",
     "new_label": "Nouvelle étiquette",

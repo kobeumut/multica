@@ -32,6 +32,7 @@ import {
 } from "../../settings/components/settings-layout";
 import { useAutoSave } from "../../settings/components/use-auto-save";
 import { useT } from "../../i18n";
+import { ResourceLabelPicker } from "../../labels/resource-label-picker";
 import { CharCounter } from "./char-counter";
 import { ConversationStartersEditor } from "./conversation-starters-editor";
 import { NewChatPreview } from "./new-chat-preview";
@@ -301,6 +302,12 @@ export function AgentDetailInspector({
                   />
                 </div>
               </SettingsRow>
+
+              {agent.system_key !== "autorouter" && (
+                <SettingsRow label={t(($) => $.autorouter.categories)} align="start">
+                  <ResourceLabelPicker resourceType="agent" resourceId={agent.id} canEdit={canEdit} />
+                </SettingsRow>
+              )}
 
               {showStarters ? (
                 <div

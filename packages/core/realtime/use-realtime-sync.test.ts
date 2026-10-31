@@ -225,6 +225,16 @@ describe("applyChatSessionUpdatedToCache", () => {
     };
   }
 
+  it("updates the routed agent once and preserves it on ordinary rename events", () => {
+    const qc = createQueryClient();
+    qc.setQueryData<ChatSession[]>(chatKeys.sessions(WS_ID), [makeSession(), makeSession({ id: "s2" })]);
+    applyChatSessionUpdatedToCache(qc, WS_ID, { chat_session_id: "s1", agent_id: "mobile" });
+    applyChatSessionUpdatedToCache(qc, WS_ID, { chat_session_id: "s1", title: "Renamed" });
+    const rows = qc.getQueryData<ChatSession[]>(chatKeys.sessions(WS_ID))!;
+    expect(rows[0]!.agent_id).toBe("mobile");
+    expect(rows[1]!.agent_id).toBe("agent-1");
+  });
+
   it("applies an explicit null project_id from another tab", () => {
     const qc = createQueryClient();
     qc.setQueryData<ChatSession[]>(chatKeys.sessions(WS_ID), [

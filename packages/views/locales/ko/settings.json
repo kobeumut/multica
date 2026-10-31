@@ -591,7 +591,8 @@
     "description": "태스크 라벨과 skill 라벨은 서로 별개입니다.",
     "scopes": {
       "issue": "태스크",
-      "skill": "스킬"
+      "skill": "스킬",
+      "agent": "에이전트 라우팅"
     },
     "search_placeholder": "이름 또는 설명으로 필터링...",
     "new_label": "새 레이블",

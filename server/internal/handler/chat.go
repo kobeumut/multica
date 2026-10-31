@@ -898,6 +898,14 @@ func (h *Handler) SendChatMessage(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "chat agent is archived")
 		return
 	}
+	if agent.SystemKey.String == "autorouter" {
+		selected, routeErr := h.resolveAutoRouter(r, agent, req.Content)
+		if routeErr != nil {
+			writeError(w, http.StatusServiceUnavailable, routeErr.Error())
+			return
+		}
+		agent = selected // the service commits the handoff with the opening turn
+	}
 	// Shared verdict: an unbound agent and a machine whose CLI cannot run are
 	// both refusals here, with their own codes. A merely offline runtime is not
 	// checked at all — chat messages queue for it, as they always have.
@@ -955,6 +963,8 @@ func (h *Handler) SendChatMessage(w http.ResponseWriter, r *http.Request) {
 	sent, err := h.TaskService.SendDirectChatMessage(r.Context(), session, agent, parseUUID(userID), req.Content, attachmentIDs, actorType, parseUUID(actorID))
 	if err != nil {
 		switch {
+		case errors.Is(err, service.ErrChatSessionAgentChanged):
+			writeError(w, http.StatusConflict, err.Error())
 		case errors.Is(err, service.ErrChatSessionArchived):
 			writeError(w, http.StatusConflict, "chat session is archived")
 		case errors.Is(err, service.ErrChatTaskAgentArchived):
@@ -966,6 +976,13 @@ func (h *Handler) SendChatMessage(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "failed to send chat message")
 		}
 		return
+	}
+	if sent.RoutedSession != nil {
+		session = *sent.RoutedSession
+		selectedID := uuidToString(session.AgentID)
+		h.publishChat(protocol.EventChatSessionUpdated, workspaceID, "member", userID, uuidToString(session.ID), protocol.ChatSessionUpdatedPayload{
+			ChatSessionID: uuidToString(session.ID), Title: session.Title, AgentID: &selectedID, UpdatedAt: timestampToString(session.UpdatedAt),
+		})
 	}
 	msg := sent.Message
 	task := sent.Task

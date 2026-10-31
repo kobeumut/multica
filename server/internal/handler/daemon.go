@@ -1565,6 +1565,9 @@ func (h *Handler) DaemonHeartbeat(w http.ResponseWriter, r *http.Request) {
 	// in the WS path and would be redundant noise on the HTTP path where the
 	// caller already knows which runtime it asked about.
 	resp := map[string]any{"status": ack.Status}
+	if ack.PendingAutoRouter != nil {
+		resp["pending_autorouter"] = ack.PendingAutoRouter
+	}
 	if ack.PendingUpdate != nil {
 		resp["pending_update"] = ack.PendingUpdate
 	}
@@ -1892,6 +1895,7 @@ func (h *Handler) processHeartbeat(ctx context.Context, runtimeID string, suppor
 		}
 	}
 
+	ack.PendingAutoRouter = h.claimAutoRouterDecision(ctx, runtimeID)
 	return ack, m, nil
 }
 

@@ -596,7 +596,8 @@
     "description": "Issue labels and skill labels are separate.",
     "scopes": {
       "issue": "Issues",
-      "skill": "Skills"
+      "skill": "Skills",
+      "agent": "Agent routing"
     },
     "search_placeholder": "Filter by name or description...",
     "new_label": "New label",

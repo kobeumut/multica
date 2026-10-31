@@ -1,4 +1,9 @@
 {
+  "autorouter": {
+    "add": "新增 AutoRouter",
+    "categories": "路由分類",
+    "local_requirement": "選擇已安裝本機 Ollama 和 kev:0.8b-mlx-bf16 的執行環境。AutoRouter 依描述及分類為新聊天和任務指派選擇有權限的智慧體。"
+  },
   "page": {
     "title": "智慧體",
     "learn_more": "瞭解更多 →",

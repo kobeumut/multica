@@ -48,9 +48,11 @@ export function useChatSessionsRealtime() {
           const payload = p as {
             chat_session_id: string;
             title?: string;
+            agent_id?: string;
             updated_at?: string;
           };
           patchSessionListAfterRename(qc, wsId, payload);
+          if (payload.agent_id) invalidateSessions();
         }),
         ws.on("chat:session_deleted", (payload) => {
           dropSessionFromList(qc, wsId, payload);
