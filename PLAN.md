@@ -11,6 +11,14 @@
 - [x] Update string-based model criteria, short-option/UUID mapping, regression tests, provisioning/setup copy and all six locales; preserve permissions without fallback.
 - [x] Run guarded decision/daemon race tests, build all Go packages and run real UUID-based English/Turkish/no-match smoke; record results in `docs/autorouter.md`.
 - [ ] Resolve Entry-level/Advanced false no-matches (realistic UUID/full-category smoke 4/6, deliberately left failing).
-- [ ] Fix managed worktree PostgreSQL authentication (`SQLSTATE 28P01`) and rerun handler/service integration tests; do not reset shared credentials.
+- [ ] Fix managed worktree PostgreSQL authentication (`SQLSTATE 28P01`); do not reset shared credentials.
+- [x] Rerun handler/service integration regressions with `-race` on an owned disposable PostgreSQL 17 container, without changing the shared development environment; remove the container afterward.
 - [ ] Restore frontend dependencies and rerun lint/typechecks.
 - [ ] Complete runtime/UI end-to-end validation before deployment.
+
+## PR review and merge (user request)
+
+- [x] Review backend and frontend changes independently; rerun guarded decision/daemon race tests and Go build.
+- [x] Fix batch routing failure reporting without hiding previously committed work; add partial-success regression coverage.
+- [x] Use the routed session agent on mobile rather than stale composition selection; add Vitest cases and run six direct Node assertions.
+- [x] Independently re-review fixes, rerun Go build and live smoke (still 4/6), and prepare the tested head for the requested SHA-pinned merge without bypassing rules or hiding deployment caveats.

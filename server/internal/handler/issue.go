@@ -4909,10 +4909,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			if params.Description.Valid {
 				description = params.Description.String
 			}
-			var routed bool
-			params.AssigneeID, routed = h.routeIssueAssignee(w, r, workspaceID, params.AssigneeType, params.AssigneeID, text+"\n\n"+description)
-			if !routed {
-				return
+			params.AssigneeID, err = h.resolveIssueAssignee(r, workspaceID, params.AssigneeType, params.AssigneeID, text+"\n\n"+description)
+			if err != nil {
+				slog.Warn("batch routing failed", "issue_id", issueID, "error", err)
+				continue
 			}
 		}
 

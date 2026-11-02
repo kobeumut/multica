@@ -32,10 +32,12 @@ expiry cleanup. This is local inference, not an entirely offline Multica service
   to the selected agent and a normal task is queued; later messages stay with it.
   There is no synthetic AutoRouter introduction or mid-conversation rerouting.
   The existing chat update event refreshes desktop/web and mobile session state.
-- Explicit issue creation, single/batch update, assignment and run resolve AutoRouter before
-  normal dispatch, using the issue title and description. The selected agent
-  becomes the assignee. Internal automations cannot execute AutoRouter as a
-  general-purpose agent; they must select a concrete agent.
+- Explicit issue creation, single/batch update, assignment and run resolve
+  AutoRouter before normal dispatch, using the issue title and description. The
+  selected agent becomes the assignee. Batch no-matches are skipped and the
+  response reports the actual updated count, including earlier committed work.
+  Internal automations cannot execute AutoRouter as a general-purpose agent;
+  they must select a concrete agent.
 - Eligibility honors workspace scope, invocation permissions and runtime
   readiness. Permissions and readiness are checked again after inference.
   AutoRouter cannot select itself, a made-up ID or an excluded agent.
@@ -73,27 +75,38 @@ allowlisted selection. Database tests cover idempotent provisioning, editable
 categories, identity-only retry responses, runtime isolation, lease recovery,
 fresh-request priority, duplicate results, transactional first-message handoff,
 rollback/concurrent-send conflicts, single/batch existing-issue text and permission
-revocation during inference. Daemon tests cover coalesced-request draining.
-Realtime cache tests cover the agent handoff. A passing mock is not a model-quality
+revocation during inference. Batch tests cover a successful assignment/dispatch
+followed by a declined item. Daemon tests cover coalesced-request draining.
+Realtime cache tests cover the agent handoff. Mobile selection tests keep the
+session's agent authoritative over a stale composition selection, including when
+invocation access was revoked. A passing mock is not a model-quality
 result.
 
 ### Actual D1 validation (2026-11-02)
 
-- Guarded decision-client and focused daemon tests pass with `-race`;
-  `go build ./...` passes. All six updated locale JSON files parse.
+- Premerge guarded decision/daemon/handler/service regression tests pass with
+  `-race`, including the two-item batch success/decline case. Migration 595 and
+  its predecessors were applied in an independently owned disposable PostgreSQL
+  17 container, removed after the run. This isolated test run did not repair or
+  modify the shared managed development environment.
+- `go build ./...` passes. All six updated locale JSON files parse.
+- The mobile agent-selection helper passes six direct Node assertions. Its
+  Vitest regression cases were added but not run: frontend dependencies remain
+  absent. No native rendering or cross-client end-to-end check was performed.
 - The downloaded D1 model loads and answers real System One requests on Ollama
   **0.40.13**. Final UUID-candidate smoke with described categories as sent by
   the handler: **4/6 pass** (Normal, Turkish Mobile Developer, Turkish Project
   Manager, unrelated/no-match).
 - The README typo and complex distributed-transaction requests incorrectly
   select **no match** instead of Entry-level and Advanced. The opt-in smoke
-  therefore **fails**, not passes. Final observed calls were 88–181 ms after
-  the first 852 ms request; these are local observations, not a benchmark or
+  therefore **fails**, not passes. The premerge rerun reproduced 4/6, with
+  observed calls of 83–100 ms after an initial 4.80-second request. These are
+  local observations, not a benchmark or
   multilingual-accuracy guarantee. An earlier bare-category smoke passed 5/6;
   it did not represent the handler's full category metadata.
-- Handler/service regression rerun is blocked: managed `make migrate-up
-  ENV_FILE=.env.worktree` fails PostgreSQL authentication (`SQLSTATE 28P01`).
-  Shared credentials were not reset and no substitute database was created.
+- Managed development `make migrate-up ENV_FILE=.env.worktree` still fails
+  PostgreSQL authentication (`SQLSTATE 28P01`). Shared credentials were not reset;
+  the disposable premerge test database was separate and was deleted.
 - Frontend lint/typechecks were not rerun: dependencies are absent (`eslint`
   not found). Prior-commit DB/race tests, core/views typechecks and 49 realtime
   tests passed, but those are not a fresh result for this revision. The earlier
@@ -102,10 +115,10 @@ result.
 UUIDs as model option names produced additional false no-matches. The adapter
 uses short options mapped back to the original allowed UUIDs; it never relaxes
 permission checks or retries with another model. Concrete agent/category
-expertise descriptions matter. Live inference now works, but the unresolved
-Entry-level/Advanced misses and incomplete integration/UI validation keep this
-change draft.
-No UI browser/device end-to-end test, merge or deployment was performed.
+expertise descriptions matter. Live inference works, but Entry-level/Advanced
+misses and incomplete UI validation remain known limitations. The requested PR
+merge is a source-code handoff, not production-readiness or deployment approval.
+No UI browser/device end-to-end test or deployment was performed.
 
 References: [D1 model](https://ollama.com/library/d1-omni:600m),
 [Ollama decision API](https://docs.ollama.com/capabilities/decision).

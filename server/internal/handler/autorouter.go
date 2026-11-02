@@ -176,21 +176,34 @@ func (h *Handler) claimAutoRouterDecision(ctx context.Context, runtimeID string)
 	return &protocol.DaemonHeartbeatPendingAutoRouter{ID: uuidToString(pending.ID), Input: pending.Input, Deadline: pending.ExpiresAt.Time}
 }
 
-// routeIssueAssignee resolves only explicit assignments. Internal automations
-// cannot accidentally spawn a general-purpose agent under the router identity.
-func (h *Handler) routeIssueAssignee(w http.ResponseWriter, r *http.Request, workspaceID string, kind pgtype.Text, id pgtype.UUID, state string) (pgtype.UUID, bool) {
+var errAutoRouterAssigneeNotFound = errors.New("assignee not found")
+
+// resolveIssueAssignee resolves only explicit assignments, without writing an
+// HTTP response: batch callers keep their existing per-item skip semantics.
+func (h *Handler) resolveIssueAssignee(r *http.Request, workspaceID string, kind pgtype.Text, id pgtype.UUID, state string) (pgtype.UUID, error) {
 	if !kind.Valid || kind.String != "agent" || !id.Valid {
-		return id, true
+		return id, nil
 	}
 	a, err := h.Queries.GetAgentInWorkspace(r.Context(), db.GetAgentInWorkspaceParams{ID: id, WorkspaceID: parseUUID(workspaceID)})
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "assignee not found")
-		return pgtype.UUID{}, false
+		return pgtype.UUID{}, errAutoRouterAssigneeNotFound
 	}
 	a, err = h.resolveAutoRouter(r, a, state)
 	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, err.Error())
+		return pgtype.UUID{}, err
+	}
+	return a.ID, nil
+}
+
+func (h *Handler) routeIssueAssignee(w http.ResponseWriter, r *http.Request, workspaceID string, kind pgtype.Text, id pgtype.UUID, state string) (pgtype.UUID, bool) {
+	id, err := h.resolveIssueAssignee(r, workspaceID, kind, id, state)
+	if err != nil {
+		status := http.StatusServiceUnavailable
+		if errors.Is(err, errAutoRouterAssigneeNotFound) {
+			status = http.StatusBadRequest
+		}
+		writeError(w, status, err.Error())
 		return pgtype.UUID{}, false
 	}
-	return a.ID, true
+	return id, true
 }

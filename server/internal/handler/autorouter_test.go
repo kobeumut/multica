@@ -281,6 +281,73 @@ func TestAutoRouterRejectsPermissionRevokedDuringDecision(t *testing.T) {
 	}
 }
 
+func TestAutoRouterBatchSkipsDeclinedIssue(t *testing.T) {
+	runtimeID := dbfx.Runtime(t, "batch router runtime")
+	routerID := dbfx.Agent(t, "AutoRouter", runtimeID, testutil.Cols{"system_key": autorouter.SystemKey})
+	selectedID := dbfx.Agent(t, "Selected", runtimeID)
+	firstID := dbfx.Issue(t, "Route this", testutil.Cols{"status": "todo"})
+	secondID := dbfx.Issue(t, "Decline this", testutil.Cols{"status": "todo"})
+	req := autoRouterRequest(t, testWorkspaceID, "POST", "/api/issues/batch-update", map[string]any{
+		"issue_ids": []string{firstID, secondID},
+		"updates":   map[string]string{"assignee_type": "agent", "assignee_id": routerID},
+	})
+	ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+	done := make(chan error, 1)
+	go func() {
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for i := 0; i < 2; {
+			select {
+			case <-ctx.Done():
+				done <- ctx.Err()
+				return
+			case <-ticker.C:
+				request := testHandler.claimAutoRouterDecision(ctx, runtimeID)
+				if request == nil {
+					continue
+				}
+				result := autorouter.Result{AgentID: selectedID}
+				if i == 1 {
+					result = autorouter.Result{Error: "no suitable agent; choose an agent explicitly"}
+				}
+				body, _ := json.Marshal(result)
+				rows, err := testHandler.Queries.CompleteAutoRouterDecision(ctx, db.CompleteAutoRouterDecisionParams{ID: parseUUID(request.ID), RuntimeID: parseUUID(runtimeID), Result: body})
+				if err != nil || rows != 1 {
+					done <- fmt.Errorf("complete decision: rows=%d err=%v", rows, err)
+					return
+				}
+				i++
+			}
+		}
+		done <- nil
+	}()
+	w := httptest.NewRecorder()
+	testHandler.BatchUpdateIssues(w, req)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Updated int `json:"updated"`
+	}
+	if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &result) != nil || result.Updated != 1 {
+		t.Fatalf("partial batch response: %d %s", w.Code, w.Body.String())
+	}
+	if n := dbfx.Count(t, "SELECT count(*) FROM issue WHERE id=$1 AND assignee_id=$2", firstID, selectedID); n != 1 {
+		t.Fatal("successful issue was not assigned")
+	}
+	if n := dbfx.Count(t, "SELECT count(*) FROM issue WHERE id=$1 AND assignee_id IS NULL", secondID); n != 1 {
+		t.Fatal("declined issue was modified")
+	}
+	if n := dbfx.Count(t, "SELECT count(*) FROM agent_task_queue WHERE issue_id=$1 AND agent_id=$2", firstID, selectedID); n != 1 {
+		t.Fatalf("successful issue tasks=%d, want 1", n)
+	}
+	if n := dbfx.Count(t, "SELECT count(*) FROM agent_task_queue WHERE issue_id=$1 OR agent_id=$2", secondID, routerID); n != 0 {
+		t.Fatal("declined issue or router received work")
+	}
+}
+
 func TestAutoRouterUpdateUsesExistingIssueText(t *testing.T) {
 	for _, batch := range []bool{false, true} {
 		t.Run(fmt.Sprintf("batch=%v", batch), func(t *testing.T) {
