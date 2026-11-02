@@ -345,6 +345,7 @@ export async function applyChatQuickActionsToCache(
 
 type ChatSessionUpdatedPayload = {
   chat_session_id: string;
+  agent_id?: string;
   title?: string;
   project_id?: string | null;
   pinned?: boolean;
@@ -381,6 +382,7 @@ export function applyChatSessionUpdatedToCache(
         ? {
             ...s,
             title: payload.title ?? s.title,
+        agent_id: payload.agent_id ?? s.agent_id,
             ...("project_id" in payload ? { project_id: payload.project_id } : {}),
             pinned: payload.pinned ?? s.pinned,
             status: payload.status ?? s.status,

@@ -487,6 +487,7 @@ import {
   ShareLinkListResponseSchema,
   ShareLinkInfoSchema,
   JoinShareLinkResponseSchema,
+  AutoRouterAgentSchema,
   EMPTY_SHARE_LINK,
   EMPTY_SHARE_LINK_INFO,
   EMPTY_JOIN_SHARE_LINK_RESPONSE,
@@ -1888,6 +1889,16 @@ export class ApiClient {
       headers: workspaceHeader(workspaceSlug),
       body: JSON.stringify(data),
     });
+  }
+
+  async createAutoRouterAgent(data: { runtime_id: string }): Promise<{ id: string; system_key: "autorouter" }> {
+    const raw = await this.fetch<unknown>("/api/agents/autorouter", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    const agent = parseWithFallback(raw, AutoRouterAgentSchema, null, { endpoint: "createAutoRouterAgent" });
+    if (!agent) throw new Error("Malformed AutoRouter response");
+    return agent;
   }
 
   async createAgentBuilderSession(data: {

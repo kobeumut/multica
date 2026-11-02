@@ -19,5 +19,6 @@ export * from "./use-workspace-agent-availability";
 export * from "./mcp-support";
 export * from "./openclaw-runtime-config";
 export * from "./runtime-binding";
+export * from "./use-create-autorouter";
 
 export * from "./qoder-runtime-config";

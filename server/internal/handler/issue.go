@@ -3449,6 +3449,18 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		return out
 	}
 
+	if req.AssigneeID != nil {
+		text := req.Title
+		if req.Description != nil {
+			text += "\n\n" + *req.Description
+		}
+		var routed bool
+		assigneeID, routed = h.routeIssueAssignee(w, r, workspaceID, assigneeType, assigneeID, text)
+		if !routed {
+			return
+		}
+	}
+
 	res, err := h.IssueService.Create(r.Context(), service.IssueCreateParams{
 		WorkspaceID:    wsUUID,
 		Title:          req.Title,
@@ -4042,6 +4054,23 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	attachmentIDs, ok := parseUUIDSliceOrBadRequest(w, req.AttachmentIDs, "attachment_ids")
 	if !ok {
 		return
+	}
+
+	if touchedType || touchedID || handoff != nil {
+		text := prevIssue.Title
+		if params.Title.Valid {
+			text = params.Title.String
+		}
+		description := prevIssue.Description.String
+		if params.Description.Valid {
+			description = params.Description.String
+		}
+		text += "\n\n" + description
+		var routed bool
+		params.AssigneeID, routed = h.routeIssueAssignee(w, r, workspaceID, params.AssigneeType, params.AssigneeID, text)
+		if !routed {
+			return
+		}
 	}
 
 	// The agent this write hands the issue to gets the change as its own run,
@@ -4867,6 +4896,22 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		}
 		if batchTouchedType || batchTouchedID || handoff != nil {
 			if status, _ := h.validateAssigneePair(r.Context(), r, workspaceID, params.AssigneeType, params.AssigneeID); status != 0 {
+				continue
+			}
+		}
+
+		if batchTouchedType || batchTouchedID || handoff != nil {
+			text := prevIssue.Title
+			if params.Title.Valid {
+				text = params.Title.String
+			}
+			description := prevIssue.Description.String
+			if params.Description.Valid {
+				description = params.Description.String
+			}
+			params.AssigneeID, err = h.resolveIssueAssignee(r, workspaceID, params.AssigneeType, params.AssigneeID, text+"\n\n"+description)
+			if err != nil {
+				slog.Warn("batch routing failed", "issue_id", issueID, "error", err)
 				continue
 			}
 		}

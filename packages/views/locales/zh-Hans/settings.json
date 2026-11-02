@@ -591,7 +591,8 @@
     "description": "任务标签与 skill 标签互相独立。",
     "scopes": {
       "issue": "任务",
-      "skill": "Skill"
+      "skill": "Skill",
+      "agent": "智能体路由"
     },
     "search_placeholder": "按名称或描述筛选...",
     "new_label": "新建标签",

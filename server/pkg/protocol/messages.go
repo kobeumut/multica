@@ -1,6 +1,9 @@
 package protocol
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 const (
 	DaemonCapabilitySkillBundlesV1      = "skill-bundles-v1"
@@ -180,6 +183,7 @@ type WorkspacesChangedPayload struct{}
 // heartbeat, which claims whatever is queued) — so an unknown value from a
 // newer server stays safe on an older daemon.
 const (
+	PendingWorkKindAutoRouter       = "autorouter"
 	PendingWorkKindModelList        = "model_list"
 	PendingWorkKindLocalSkills      = "local_skills"
 	PendingWorkKindLocalSkillImport = "local_skill_import"
@@ -395,8 +399,9 @@ type ChatSessionDeletedPayload struct {
 // patch the session row in their cached list so the dropdown stays in sync
 // without a full refetch.
 type ChatSessionUpdatedPayload struct {
-	ChatSessionID string `json:"chat_session_id"`
-	Title         string `json:"title"`
+	ChatSessionID string  `json:"chat_session_id"`
+	Title         string  `json:"title"`
+	AgentID       *string `json:"agent_id,omitempty"`
 	// ProjectID is set only by the project-context update path. The double
 	// pointer distinguishes an omitted field from an explicit JSON null.
 	ProjectID **string `json:"project_id,omitempty"`
@@ -437,6 +442,7 @@ type DaemonHeartbeatAckPayload struct {
 	RuntimeGone             bool                                    `json:"runtime_gone,omitempty"`
 	PendingUpdate           *DaemonHeartbeatPendingUpdate           `json:"pending_update,omitempty"`
 	PendingModelList        *DaemonHeartbeatPendingModelList        `json:"pending_model_list,omitempty"`
+	PendingAutoRouter       *DaemonHeartbeatPendingAutoRouter       `json:"pending_autorouter,omitempty"`
 	PendingLocalSkills      *DaemonHeartbeatPendingLocalSkills      `json:"pending_local_skills,omitempty"`
 	PendingLocalSkillImport *DaemonHeartbeatPendingLocalSkillImport `json:"pending_local_skill_import,omitempty"`
 	// PendingLocalSkillImports carries multiple import requests in a single
@@ -461,6 +467,13 @@ type DaemonHeartbeatPendingUpdate struct {
 // enumerate the runtime's supported models.
 type DaemonHeartbeatPendingModelList struct {
 	ID string `json:"id"`
+}
+
+// DaemonHeartbeatPendingAutoRouter is a bounded local decision, not an agent task.
+type DaemonHeartbeatPendingAutoRouter struct {
+	ID       string          `json:"id"`
+	Input    json.RawMessage `json:"input"`
+	Deadline time.Time       `json:"deadline"`
 }
 
 // DaemonHeartbeatPendingLocalSkills describes a request for the runtime's

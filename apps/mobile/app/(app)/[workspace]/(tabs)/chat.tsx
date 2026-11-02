@@ -15,8 +15,8 @@
  *
  * State (all local, none in Zustand):
  *   - activeSessionId   — which session is being viewed (null = new chat blank)
- *   - selectedAgentId   — overrides currentSession.agent_id when set (used
- *                         when starting a new chat with a freshly-picked agent)
+ *   - selectedAgentId   — composition selection for a new chat only; an
+ *                         existing session owns its agent, including handoffs
  *   - sessionSheetOpen  — bottom modal visibility
  *   - agentPickerOpen   — bottom modal visibility
  *
@@ -94,6 +94,7 @@ import { OfflineBanner } from "@/components/chat/offline-banner";
 import { RuntimeRequiredBanner } from "@/components/chat/runtime-required-banner";
 import { useChatSelectStore } from "@/data/chat-select-store";
 import { isAgentRuntimeBound } from "@/lib/is-agent-runtime-bound";
+import { currentChatAgent } from "@/lib/current-chat-agent";
 
 export default function ChatTab() {
   const qc = useQueryClient();
@@ -191,17 +192,11 @@ export default function ChatTab() {
     [sessions, activeSessionId],
   );
 
-  // Active agent: explicit selection wins; otherwise inherit from the
-  // active session; otherwise pick the first available agent.
-  const currentAgent: Agent | null = useMemo(() => {
-    if (selectedAgentId) {
-      return availableAgents.find((a) => a.id === selectedAgentId) ?? null;
-    }
-    if (activeSession) {
-      return agents.find((a) => a.id === activeSession.agent_id) ?? null;
-    }
-    return availableAgents[0] ?? null;
-  }, [selectedAgentId, availableAgents, activeSession, agents]);
+  // A routed session owns its agent; explicit selection is for new chats only.
+  const currentAgent: Agent | null = useMemo(
+    () => currentChatAgent(activeSession, selectedAgentId, agents, availableAgents),
+    [selectedAgentId, availableAgents, activeSession, agents],
+  );
 
   // A session outlives the permission that created it: the agent can be flipped
   // to personal, change owner, or drop this member from its allow-list, and the

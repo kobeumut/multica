@@ -785,6 +785,11 @@ func pendingSlotTakenErr(err error) bool {
 // Keeping this at the enqueue boundary (not inside the pure classifiers) means
 // owner_fallback needs the agent owner, which every enqueue path has in hand.
 func (s *TaskService) applyAttributionFallback(ctx context.Context, attr attribution.Result, agent db.Agent) (attribution.Result, error) {
+	// AutoRouter must be resolved by an authorized direct-chat/assignment request,
+	// never launched as a general-purpose agent by a mention or automation.
+	if agent.SystemKey.String == "autorouter" {
+		return attr, errors.New("AutoRouter must be resolved before enqueueing work")
+	}
 	if attr.Source != attribution.SourceUnattributed {
 		return attr, nil
 	}
@@ -2346,9 +2351,11 @@ type DirectChatSendResult struct {
 	BoundAttachmentIDs []pgtype.UUID
 	Queued             bool
 	InitialTitle       string
+	RoutedSession      *db.ChatSession
 }
 
 var ErrChatSessionAlreadyStarted = errors.New("chat session already has a user message")
+var ErrChatSessionAgentChanged = errors.New("chat session agent changed; reload and retry")
 
 // SendDirectChatMessage atomically persists one web/mobile direct-chat turn:
 // the owning task (which claims its own input batch via chat_input_task_id), the
@@ -2406,6 +2413,25 @@ func (s *TaskService) SendDirectChatMessage(
 		}
 		if currentSession.Status != "active" {
 			return ErrChatSessionArchived
+		}
+		if currentSession.AgentID != session.AgentID {
+			return ErrChatSessionAgentChanged
+		}
+		if session.AgentID != agent.ID {
+			// Only an empty built-in AutoRouter may hand off to a different
+			// preflighted agent. Commit the handoff with its opening turn.
+			router, err := qtx.GetAgent(ctx, session.AgentID)
+			if err != nil || router.SystemKey.String != "autorouter" {
+				return ErrChatSessionAgentChanged
+			}
+			session, err = qtx.RouteEmptyChatSession(ctx, db.RouteEmptyChatSessionParams{ID: session.ID, RouterID: router.ID, AgentID: agent.ID})
+			if errors.Is(err, pgx.ErrNoRows) {
+				return ErrChatSessionAgentChanged
+			}
+			if err != nil {
+				return fmt.Errorf("route opening chat: %w", err)
+			}
+			out.RoutedSession = &session
 		}
 		carrier, err := qtx.GetAgentForClaimUpdate(ctx, session.AgentID)
 		if err != nil {

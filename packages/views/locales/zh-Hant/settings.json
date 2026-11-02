@@ -591,7 +591,8 @@
     "description": "任務標籤與 skill 標籤互相獨立。",
     "scopes": {
       "issue": "任務",
-      "skill": "Skill"
+      "skill": "Skill",
+      "agent": "智慧體路由"
     },
     "search_placeholder": "按名稱或描述篩選...",
     "new_label": "新建標籤",

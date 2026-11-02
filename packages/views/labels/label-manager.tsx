@@ -44,12 +44,7 @@ import {
 import { ColorPicker, COLOR_PICKER_PRESETS } from "../common/color-picker";
 import { useLocale, useT } from "../i18n";
 
-/**
- * Label catalogs a user can manage. Narrower than `LabelResourceType`:
- * the backend still models agent labels, but the product no longer exposes
- * any way to create, apply, or view them, so they are not manageable here.
- */
-export type LabelScope = Extract<LabelResourceType, "issue" | "skill">;
+export type LabelScope = LabelResourceType;
 
 interface LabelDraft {
   name: string;

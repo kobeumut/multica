@@ -630,6 +630,8 @@ type Daemon struct {
 	// milliseconds; without the guard each hint would fire its own out-of-band
 	// heartbeat, and an authenticated caller looping the list-models endpoint
 	// could turn that into a heartbeat amplifier.
+	autoRouterInflight sync.Map // decision ID -> active local inference/report
+
 	pendingWorkMu       sync.Mutex
 	pendingWorkInflight map[string]struct{}  // runtime_id -> hint-driven heartbeat in flight
 	pendingWorkLastRun  map[string]time.Time // runtime_id -> when the last hint-driven heartbeat started
@@ -4531,6 +4533,9 @@ func (d *Daemon) handleHeartbeatActions(ctx context.Context, runtimeID string, r
 			"local_skill_import", resp.PendingLocalSkillImport != nil,
 		)
 	}
+	if resp.PendingAutoRouter != nil {
+		go d.handleAutoRouter(ctx, runtimeID, *resp.PendingAutoRouter)
+	}
 	if resp.PendingUpdate != nil {
 		go d.handleUpdate(ctx, runtimeID, resp.PendingUpdate)
 	}
@@ -4621,6 +4626,12 @@ func (d *Daemon) handlePendingWorkHint(runtimeID, kind string) {
 		d.pendingWorkMu.Unlock()
 	}()
 
+	d.requestPendingWorkCheck(runtimeID, kind)
+}
+
+// requestPendingWorkCheck also drains completed AutoRouter work. Unlike an
+// external hint it must not drop the next pull within the coalescing window.
+func (d *Daemon) requestPendingWorkCheck(runtimeID, kind string) {
 	// Root context: handleHeartbeatActions hands this ctx to the actual work, so
 	// it must outlive this function. Capability discovery and local-skill imports
 	// are normally quick filesystem operations, while model discovery may shell

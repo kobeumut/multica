@@ -1,4 +1,9 @@
 {
+  "autorouter": {
+    "add": "AutoRouter 추가",
+    "categories": "라우팅 카테고리",
+    "local_requirement": "로컬 Ollama와 d1-omni:600m이 설치된 런타임을 선택하세요. AutoRouter는 새 채팅과 태스크 할당 시 설명과 카테고리를 기반으로 허용된 에이전트를 선택합니다."
+  },
   "page": {
     "title": "에이전트",
     "learn_more": "자세히 보기 →",

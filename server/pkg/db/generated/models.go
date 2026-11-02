@@ -324,6 +324,16 @@ type AutopilotTrigger struct {
 	CreatedByID pgtype.UUID `json:"created_by_id"`
 }
 
+type AutorouterDecision struct {
+	ID         pgtype.UUID        `json:"id"`
+	RuntimeID  pgtype.UUID        `json:"runtime_id"`
+	Input      []byte             `json:"input"`
+	Result     []byte             `json:"result"`
+	Claimed    bool               `json:"claimed"`
+	ClaimUntil pgtype.Timestamptz `json:"claim_until"`
+	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
+}
+
 type ChannelBindingToken struct {
 	TokenHash      string             `json:"token_hash"`
 	WorkspaceID    pgtype.UUID        `json:"workspace_id"`

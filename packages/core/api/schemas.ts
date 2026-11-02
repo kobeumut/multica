@@ -1,4 +1,9 @@
 import { z } from "zod";
+
+export const AutoRouterAgentSchema = z.object({
+  id: z.string().uuid(),
+  system_key: z.literal("autorouter"),
+});
 import { normalizeIssueStatusCategory } from "../issues/config/status";
 import type {
   WorkflowHandoffPreview,

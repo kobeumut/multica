@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   AlertCircle,
   Bot,
@@ -71,6 +71,7 @@ import {
 } from "../../layout/collection-page";
 import { availabilityConfig } from "../presence";
 import { AgentRowActions } from "./agent-row-actions";
+import { AutoRouterButton } from "./autorouter-button";
 import {
   AgentListToolbar,
   countActiveFilterDimensions,
@@ -252,9 +253,11 @@ export interface AgentsPageProps {
 function PageHeaderBar({
   totalCount,
   onCreate,
+  autorouterAction,
 }: {
   totalCount: number;
   onCreate: () => void;
+  autorouterAction?: ReactNode;
 }) {
   const { t, i18n } = useT("agents");
   return (
@@ -267,11 +270,10 @@ function PageHeaderBar({
         label: t(($) => $.page.learn_more),
       }}
       actions={
-        <CollectionPageHeaderAction
-          icon={Plus}
-          label={t(($) => $.page.new_agent)}
-          onClick={onCreate}
-        />
+        <>
+          {autorouterAction}
+          <CollectionPageHeaderAction icon={Plus} label={t(($) => $.page.new_agent)} onClick={onCreate} />
+        </>
       }
     />
   );
@@ -1035,6 +1037,9 @@ export function AgentsPage(_props: AgentsPageProps = {}) {
       <PageHeaderBar
         totalCount={totalCount}
         onCreate={() => navigation.push(paths.newAgent())}
+        autorouterAction={!agents.some((agent) => agent.system_key === "autorouter") && (
+          <AutoRouterButton runtimes={runtimes} members={members} currentUserId={currentUser?.id ?? null} />
+        )}
       />
 
       {showEmpty ? (
