@@ -107,7 +107,7 @@ func (h *Handler) awaitAutoRouterDecision(ctx context.Context, runtimeID pgtype.
 	for {
 		select {
 		case <-ctx.Done():
-			return "", errors.New("AutoRouter timed out; check the daemon, Ollama and kev:0.8b-mlx-bf16")
+			return "", fmt.Errorf("AutoRouter timed out; check the daemon, Ollama and %s", autorouter.Model)
 		case <-ticker.C:
 			decision, err := h.Queries.GetAutoRouterDecision(ctx, id)
 			if err != nil {

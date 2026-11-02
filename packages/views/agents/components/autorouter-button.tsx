@@ -12,7 +12,7 @@ import { RuntimePicker } from "./runtime-picker";
 import { useNavigation } from "../../navigation";
 import { useT } from "../../i18n";
 
-const KEV_PULL_COMMAND = "ollama pull kev:0.8b-mlx-bf16";
+const MODEL_PULL_COMMAND = "ollama pull d1-omni:600m";
 
 export function AutoRouterButton({ runtimes, members, currentUserId }: {
   runtimes: RuntimeDevice[];
@@ -48,7 +48,7 @@ export function AutoRouterButton({ runtimes, members, currentUserId }: {
           <DialogTitle>{t(($) => $.autorouter.add)}</DialogTitle>
           <DialogDescription>{t(($) => $.autorouter.local_requirement)}</DialogDescription>
         </DialogHeader>
-        <code className="block break-all rounded bg-muted p-3 text-caption">{KEV_PULL_COMMAND}</code>
+        <code className="block break-all rounded bg-muted p-3 text-caption">{MODEL_PULL_COMMAND}</code>
         <RuntimePicker runtimes={runtimes} members={members} currentUserId={currentUserId} selectedRuntimeId={runtimeId} onSelect={setRuntimeId} disabled={create.isPending} />
         {create.error && <p role="alert" className="break-words text-sm text-destructive">{create.error.message}</p>}
         <DialogFooter>

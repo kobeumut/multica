@@ -14,7 +14,7 @@ import (
 )
 
 // CreateAutoRouterAgent provisions one stable, workspace-invocable entry point.
-// The selected runtime hosts Kev; candidate agents keep their own runtimes.
+// The selected runtime hosts the decision model; candidate agents keep their own runtimes.
 func (h *Handler) CreateAutoRouterAgent(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -82,7 +82,7 @@ func (h *Handler) CreateAutoRouterAgent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	agent, err := q.CreateSystemUserAgent(r.Context(), db.CreateSystemUserAgentParams{
-		WorkspaceID: wsID, Name: "AutoRouter", Description: "Routes new chats and explicit issue assignments to an eligible agent using local Kev, descriptions and routing categories.",
+		WorkspaceID: wsID, Name: "AutoRouter", Description: "Routes new chats and explicit issue assignments to an eligible agent using a local decision model, descriptions and routing categories.",
 		RuntimeMode: runtime.RuntimeMode, RuntimeID: runtime.ID, Model: pgtype.Text{String: autorouter.Model, Valid: true}, Visibility: "workspace", PermissionMode: "public_to", MaxConcurrentTasks: 1, OwnerID: parseUUID(userID), SystemKey: pgtype.Text{String: autorouter.SystemKey, Valid: true},
 	})
 	if err != nil {
@@ -95,7 +95,7 @@ func (h *Handler) CreateAutoRouterAgent(w http.ResponseWriter, r *http.Request) 
 	}
 	// Seed only once. Labels remain ordinary editable workspace data afterwards.
 	if _, err = tx.Exec(r.Context(), `INSERT INTO issue_label (workspace_id,resource_type,name,description,color) VALUES
- ($1,'agent','Entry-level','Simple, low-risk, well-specified tasks.','#22c55e'),
+ ($1,'agent','Entry-level','Simple tasks: fix typos, edit documentation, make small code changes and give short explanations.','#22c55e'),
  ($1,'agent','Normal','Standard implementation and general tasks.','#3b82f6'),
  ($1,'agent','Advanced','Complex architecture, debugging and high-risk changes.','#a855f7')
  ON CONFLICT DO NOTHING`, wsID); err != nil {
