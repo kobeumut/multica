@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,6 +31,7 @@ func (d *Daemon) handleAutoRouter(ctx context.Context, runtimeID string, request
 		id, err := autorouter.Decide(decisionCtx, input)
 		if err != nil {
 			result.Error = err.Error()
+			result.NoMatch = errors.Is(err, autorouter.ErrNoMatch)
 		} else {
 			result.AgentID = id
 		}

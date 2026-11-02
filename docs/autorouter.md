@@ -41,11 +41,22 @@ expiry cleanup. This is local inference, not an entirely offline Multica service
 - Eligibility honors workspace scope, invocation permissions and runtime
   readiness. Permissions and readiness are checked again after inference.
   AutoRouter cannot select itself, a made-up ID or an excluded agent.
-- Input is limited to 64,000 bytes and 254 eligible agents, plus a reserved
-  “no match” option. D1 receives string descriptions under short option labels;
-  those labels map back to allowed agent IDs, never directly to arbitrary IDs.
-  A model error, timeout or no-match fails closed: nothing
-  is silently sent to another model/agent. Select an agent explicitly to proceed.
+- Input is limited to 64,000 bytes and 254 eligible agents. D1 receives string
+  descriptions under short option labels; those labels map back to allowed agent
+  IDs, never directly to arbitrary IDs. A model error, timeout or no-match fails
+  closed: nothing is silently sent to another model/agent. Select an agent
+  explicitly to proceed.
+- Each decision asks D1 two questions in one request. A yes/no question asks
+  whether the text is work an agent could do; a choice question picks the agent.
+  The request is declined as no-match only when the yes/no probability is under
+  0.3. The choice question deliberately has no “none” option: one “none” competes
+  with every agent, so similar agents split the probability and “none” won
+  requests such as “fix the typo in README”. A greeting may therefore reach the
+  closest agent; blocking real work was the worse failure.
+- The chat composer names the cause of a refused send. `autorouter_no_match`
+  asks the user to choose an agent; `autorouter_unavailable` (timeout, Ollama
+  unreachable, malformed answer) asks them to check Ollama on the router's
+  runtime. Authorization and readiness failures keep their own messages.
 - Server requests expire after 40 seconds; local inference has a 30-second budget.
   Decisions are persisted for multi-instance delivery, claimed on the router's
   runtime only, re-delivered after a short lease and accepted only once.
@@ -70,8 +81,8 @@ environment before guarded handler/service tests (`-run AutoRouter`). Do not cop
 `.env`, manually create a database or reset shared credentials. Check verbose
 output: unreachable PostgreSQL can make these integration tests skip.
 
-Unit tests cover HTTP errors, malformed decisions, timeouts, bounds, no-match and
-allowlisted selection. Database tests cover idempotent provisioning, editable
+Unit tests cover HTTP errors, malformed decisions, timeouts, bounds, no-match,
+the relevance floor, single-candidate requests and allowlisted selection. Database tests cover idempotent provisioning, editable
 categories, identity-only retry responses, runtime isolation, lease recovery,
 fresh-request priority, duplicate results, transactional first-message handoff,
 rollback/concurrent-send conflicts, single/batch existing-issue text and permission
@@ -82,7 +93,29 @@ session's agent authoritative over a stale composition selection, including when
 invocation access was revoked. A passing mock is not a model-quality
 result.
 
-### Actual D1 validation (2026-11-02)
+### D1 no-match fix (2026-11-02)
+
+Chat sends with AutoRouter failed with 503 and a generic toast. Backend logs
+showed the full path working (hint, claim, report); D1 answered `none` for real
+requests. With seven agents whose descriptions mostly match and no categories
+attached, “Fix the typo in README” scored `none` at 0.78.
+
+- The in-choice `none` falsely declined 5 of 14 English/Turkish work requests
+  (typo, button colour, pagination, push notifications, README setup). The
+  separate relevance question declined 0 of 20 work requests, including
+  translation, blog and contract-clause requests. Jokes, trivia and recipes are
+  still declined.
+- The opt-in real-model smoke now passes **6/6** (previously 4/6), including
+  Entry-level, Advanced and the unrelated-request no-match.
+- On the real workspace's seven agents, 8 work requests routed and 3 off-topic
+  ones were declined. These are local observations of a 600M model, not a
+  benchmark. The 0.3 floor was set from them.
+- Identical agent descriptions still split the choice probability: the three
+  “Full Stack Developer” agents rarely win against a distinct one such as PM.
+  Attach categories or write distinct descriptions; that is configuration, not
+  something the router can infer.
+
+### Earlier D1 validation (2026-11-02, before the fix above)
 
 - Premerge guarded decision/daemon/handler/service regression tests pass with
   `-race`, including the two-item batch success/decline case. Migration 595 and
@@ -98,12 +131,8 @@ result.
   the handler: **4/6 pass** (Normal, Turkish Mobile Developer, Turkish Project
   Manager, unrelated/no-match).
 - The README typo and complex distributed-transaction requests incorrectly
-  select **no match** instead of Entry-level and Advanced. The opt-in smoke
-  therefore **fails**, not passes. The premerge rerun reproduced 4/6, with
-  observed calls of 83–100 ms after an initial 4.80-second request. These are
-  local observations, not a benchmark or
-  multilingual-accuracy guarantee. An earlier bare-category smoke passed 5/6;
-  it did not represent the handler's full category metadata.
+  selected **no match** instead of Entry-level and Advanced (4/6), with observed
+  calls of 83–100 ms after an initial 4.80-second request. Fixed above.
 - Managed development `make migrate-up ENV_FILE=.env.worktree` still fails
   PostgreSQL authentication (`SQLSTATE 28P01`). Shared credentials were not reset;
   the disposable premerge test database was separate and was deleted.
@@ -115,10 +144,9 @@ result.
 UUIDs as model option names produced additional false no-matches. The adapter
 uses short options mapped back to the original allowed UUIDs; it never relaxes
 permission checks or retries with another model. Concrete agent/category
-expertise descriptions matter. Live inference works, but Entry-level/Advanced
-misses and incomplete UI validation remain known limitations. The requested PR
+expertise descriptions matter. Live inference works; incomplete UI validation remains a known limitation. The requested PR
 merge is a source-code handoff, not production-readiness or deployment approval.
-No UI browser/device end-to-end test or deployment was performed.
+After the no-match fix, the local stack was rebuilt and an API-level check ran against it: an off-topic chat message returned `503 autorouter_no_match` in 0.49 s through the real daemon and D1. The routed-agent path was verified by the real-model replay and the handler tests, not live, because a live send queues a real agent run. No browser/device test or production deployment was performed.
 
 References: [D1 model](https://ollama.com/library/d1-omni:600m),
 [Ollama decision API](https://docs.ollama.com/capabilities/decision).
