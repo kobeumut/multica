@@ -38,6 +38,7 @@ func TestDispatchBlockedFallbackMessageIsNonEnumerating(t *testing.T) {
 		ReasonInvocationNotAllowed, ReasonTargetUnavailable, ReasonRuntimeOffline,
 		ReasonRuntimeAccessDenied,
 		ReasonAttributionBlocked, ReasonAlreadyActive, ReasonInternalError,
+		ReasonAutoRouterNoMatch, ReasonAutoRouterUnavailable,
 		DispatchReasonCode("some_future_code"),
 	}
 	for _, c := range codes {

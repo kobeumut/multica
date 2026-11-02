@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multica/server/internal/analytics"
+	"github.com/multica-ai/multica/server/internal/autorouter"
 	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/internal/logger"
 	obsmetrics "github.com/multica-ai/multica/server/internal/metrics"
@@ -839,6 +840,22 @@ type SendChatMessageResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
+// autoRouterBlockedCode classifies the two decision outcomes the user can act
+// on. A "none" decision means name an agent or be more specific; a failure to
+// decide means the machine hosting the local model needs attention. Kept apart
+// so the composer never tells the user to rephrase when the model is simply
+// down. Authorization and readiness failures around the decision are not
+// classified here: they keep their own message.
+func autoRouterBlockedCode(err error) (DispatchReasonCode, bool) {
+	switch {
+	case errors.Is(err, autorouter.ErrNoMatch):
+		return ReasonAutoRouterNoMatch, true
+	case errors.Is(err, errAutoRouterUnavailable):
+		return ReasonAutoRouterUnavailable, true
+	}
+	return "", false
+}
+
 func (h *Handler) SendChatMessage(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -901,6 +918,13 @@ func (h *Handler) SendChatMessage(w http.ResponseWriter, r *http.Request) {
 	if agent.SystemKey.String == "autorouter" {
 		selected, routeErr := h.resolveAutoRouter(r, agent, req.Content)
 		if routeErr != nil {
+			// Status stays 503: the send really did not happen. reason_code is
+			// additive and lets the composer say whether the router declined
+			// (no match) or could not decide at all.
+			if code, ok := autoRouterBlockedCode(routeErr); ok {
+				h.writeDispatchBlocked(w, http.StatusServiceUnavailable, code)
+				return
+			}
 			writeError(w, http.StatusServiceUnavailable, routeErr.Error())
 			return
 		}

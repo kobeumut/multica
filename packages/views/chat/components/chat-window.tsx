@@ -18,7 +18,7 @@ import { useAuthStore } from "@multica/core/auth";
 import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { canAssignAgent } from "../../issues/components/pickers/assignee-picker";
-import { api, dispatchReasonCode } from "@multica/core/api";
+import { api } from "@multica/core/api";
 import {
   isAgentRuntimeBound,
   useAgentPresenceDetail,
@@ -64,6 +64,7 @@ import { useChatStore } from "@multica/core/chat";
 import { upsertChatMessageToCaches } from "@multica/core/chat/message-cache";
 import { chatQuickActionsPendingOptions } from "@multica/core/chat/queries";
 import { useQuickActionsPendingTimeout } from "@multica/core/chat/use-quick-actions-pending-timeout";
+import { useChatSendFailureToast } from "./use-chat-send-failure-toast";
 import { useQuickActionsFailureToast } from "./use-quick-actions-failure-toast";
 import { removeChatMessageFromCaches } from "@multica/core/realtime";
 import { useChatDraftRestore } from "./use-chat-draft-restore";
@@ -96,6 +97,7 @@ const apiLogger = createLogger("chat.api");
 
 export function ChatWindow() {
   const { t } = useT("chat");
+  const toastSendFailure = useChatSendFailureToast();
   const wsId = useWorkspaceId();
   const isOpen = useChatStore((s) => s.isOpen);
   const activeSessionId = useChatStore((s) => s.activeSessionId);
@@ -458,16 +460,7 @@ export function ChatWindow() {
         sessionId = await ensureSession(finalContent);
       } catch (err) {
         apiLogger.error("sendChatMessage.ensureSession.error", err);
-        const reason = dispatchReasonCode(err);
-        toast.error(
-          reason === "invocation_not_allowed"
-            ? t(($) => $.input.send_blocked_toast)
-            : reason === "agent_runtime_required"
-              ? t(($) => $.input.runtime_required_toast)
-              : reason === "runtime_access_denied"
-                ? t(($) => $.input.runtime_access_denied_toast)
-                : t(($) => $.input.send_failed_toast),
-        );
+        toastSendFailure(err);
         return false;
       }
       if (!sessionId) {
@@ -486,16 +479,7 @@ export function ChatWindow() {
         result = await api.sendChatMessage(sessionId, finalContent, attachmentIds);
       } catch (err) {
         apiLogger.error("sendChatMessage.error", { sessionId, err });
-        const reason = dispatchReasonCode(err);
-        toast.error(
-          reason === "invocation_not_allowed"
-            ? t(($) => $.input.send_blocked_toast)
-            : reason === "agent_runtime_required"
-              ? t(($) => $.input.runtime_required_toast)
-              : reason === "runtime_access_denied"
-                ? t(($) => $.input.runtime_access_denied_toast)
-                : t(($) => $.input.send_failed_toast),
-        );
+        toastSendFailure(err);
         return false;
       }
       apiLogger.info("sendChatMessage.success", {
@@ -590,6 +574,7 @@ export function ChatWindow() {
       qc,
       setActiveSession,
       t,
+      toastSendFailure,
     ],
   );
 

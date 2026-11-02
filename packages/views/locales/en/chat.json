@@ -25,6 +25,8 @@
     "send_blocked_toast": "Message not sent — you no longer have permission to use this agent",
     "runtime_required_toast": "Message not sent — bind a runtime to this agent first",
     "runtime_access_denied_toast": "Message not sent — this agent can't run on its private runtime. Make the runtime public, or rebind/copy the agent to a runtime its owner can use",
+    "autorouter_no_match_toast": "Message not sent — AutoRouter couldn't pick an agent for this request. Choose an agent yourself",
+    "autorouter_unavailable_toast": "Message not sent — AutoRouter's local model isn't responding. Check Ollama on its runtime, then try again",
     "attachment_bind_failed_toast": "Message sent, but files were not attached. Please try again in a moment.",
     "add_tooltip": "Add",
     "upload_file": "Image or files",

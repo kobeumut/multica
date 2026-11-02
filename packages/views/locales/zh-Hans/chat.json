@@ -24,6 +24,8 @@
     "send_blocked_toast": "消息未发送——你已没有该智能体的使用权限",
     "runtime_required_toast": "消息未发送——请先为该智能体绑定运行时",
     "runtime_access_denied_toast": "消息未发送——该智能体无法在其私有运行时上运行。请将该运行时设为公开，或将智能体重新绑定/复制到其所有者可用的运行时",
+    "autorouter_no_match_toast": "消息未发送——AutoRouter 未能为该请求选出合适的智能体。请自行选择智能体",
+    "autorouter_unavailable_toast": "消息未发送——AutoRouter 的本地模型无响应。请检查其运行时上的 Ollama 后重试",
     "attachment_bind_failed_toast": "消息已发送，但文件未能附加。请稍后重试。",
     "add_tooltip": "添加",
     "upload_file": "图片或文件",

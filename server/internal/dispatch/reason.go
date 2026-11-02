@@ -95,6 +95,19 @@ const (
 	// ReasonIssueLimitReached means a create_issue Autopilot was admitted for a
 	// run, but Cloud's effective workspace issue-count limit blocked the issue.
 	ReasonIssueLimitReached ReasonCode = "issue_limit_reached"
+	// ReasonAutoRouterNoMatch: the AutoRouter decision model ran and judged the
+	// request not to be work any eligible agent does. Fail-closed by design, so
+	// nothing was queued. The fix is a
+	// clearer request or naming an agent explicitly, which is what the copy
+	// tells the user; retrying the same text changes nothing.
+	ReasonAutoRouterNoMatch ReasonCode = "autorouter_no_match"
+	// ReasonAutoRouterUnavailable: AutoRouter could not obtain a decision at all
+	// (local decision model unreachable, HTTP error, malformed response, or the
+	// selected agent was not among the eligible candidates). Kept APART from
+	// autorouter_no_match because the repair is different: nothing was decided,
+	// the same message may succeed once the local model is running, and the
+	// machine that hosts it is where the user has to look.
+	ReasonAutoRouterUnavailable ReasonCode = "autorouter_unavailable"
 	// ReasonInternalError: an unexpected server error prevented a clean decision.
 	ReasonInternalError ReasonCode = "internal_error"
 )

@@ -68,6 +68,8 @@ const (
 	ReasonAlreadyActive         = dispatch.ReasonAlreadyActive
 	ReasonSelfTriggerSuppressed = dispatch.ReasonSelfTriggerSuppressed
 	ReasonIssueInTriage         = dispatch.ReasonIssueInTriage
+	ReasonAutoRouterNoMatch     = dispatch.ReasonAutoRouterNoMatch
+	ReasonAutoRouterUnavailable = dispatch.ReasonAutoRouterUnavailable
 	ReasonInternalError         = dispatch.ReasonInternalError
 )
 
@@ -138,6 +140,10 @@ func dispatchBlockedFallbackMessage(code DispatchReasonCode) string {
 		return "a run is already active for this target"
 	case ReasonIssueInTriage:
 		return "the issue is in Triage and has no owner to run yet; accept it out of Triage first"
+	case ReasonAutoRouterNoMatch:
+		return "no suitable agent; choose an agent explicitly"
+	case ReasonAutoRouterUnavailable:
+		return "the AutoRouter decision model is unavailable"
 	default:
 		return "the run was blocked"
 	}

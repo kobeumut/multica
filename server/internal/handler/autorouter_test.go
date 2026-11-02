@@ -409,3 +409,76 @@ func TestAutoRouterUpdateUsesExistingIssueText(t *testing.T) {
 		})
 	}
 }
+
+// completeNextAutoRouterDecision stands in for the daemon: it claims the next
+// pending decision on the runtime and completes it with result.
+func completeNextAutoRouterDecision(runtimeID string, result autorouter.Result) <-chan error {
+	done := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				done <- ctx.Err()
+				return
+			case <-ticker.C:
+				request := testHandler.claimAutoRouterDecision(ctx, runtimeID)
+				if request == nil {
+					continue
+				}
+				body, _ := json.Marshal(result)
+				_, err := testHandler.Queries.CompleteAutoRouterDecision(ctx, db.CompleteAutoRouterDecisionParams{ID: parseUUID(request.ID), RuntimeID: parseUUID(runtimeID), Result: body})
+				done <- err
+				return
+			}
+		}
+	}()
+	return done
+}
+
+// The composer must tell "the router declined" from "the router could not
+// decide": the first asks the user to name an agent, the second to check the
+// machine hosting the model. Neither may queue work or move the session.
+func TestAutoRouterChatSendReportsDecisionOutcomeAsReasonCode(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		result autorouter.Result
+		want   string
+	}{
+		{"no match", autorouter.Result{Error: autorouter.ErrNoMatch.Error(), NoMatch: true}, "autorouter_no_match"},
+		{"model failure", autorouter.Result{Error: "local AutoRouter model d1-omni:600m unavailable: connection refused"}, "autorouter_unavailable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runtimeID := dbfx.Runtime(t, "reason code router runtime")
+			routerID := dbfx.Agent(t, "AutoRouter", runtimeID, testutil.Cols{"system_key": autorouter.SystemKey})
+			dbfx.Agent(t, "Candidate", runtimeID, testutil.Cols{"description": "Any work"})
+			sessionID := createHandlerTestChatSession(t, routerID)
+			done := completeNextAutoRouterDecision(runtimeID, tc.result)
+			req := autoRouterRequest(t, testWorkspaceID, "POST", "/messages", map[string]string{"content": "Fix the typo in README"})
+			req = withURLParam(req, "sessionId", sessionID)
+			w := httptest.NewRecorder()
+			testHandler.SendChatMessage(w, req)
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+			var body struct {
+				ReasonCode string `json:"reason_code"`
+			}
+			if w.Code != http.StatusServiceUnavailable || json.Unmarshal(w.Body.Bytes(), &body) != nil || body.ReasonCode != tc.want {
+				t.Fatalf("send: %d %s, want 503 reason_code %s", w.Code, w.Body.String(), tc.want)
+			}
+			if n := dbfx.Count(t, "SELECT count(*) FROM chat_message WHERE chat_session_id=$1", sessionID); n != 0 {
+				t.Fatalf("persisted %d messages for a refused send", n)
+			}
+			if n := dbfx.Count(t, "SELECT count(*) FROM agent_task_queue WHERE chat_session_id=$1", sessionID); n != 0 {
+				t.Fatalf("queued %d tasks for a refused send", n)
+			}
+			if n := dbfx.Count(t, "SELECT count(*) FROM chat_session WHERE id=$1 AND agent_id=$2", sessionID, routerID); n != 1 {
+				t.Fatal("refused send moved the session off the router")
+			}
+		})
+	}
+}

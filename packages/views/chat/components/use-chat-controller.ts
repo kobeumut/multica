@@ -13,7 +13,7 @@ import { getCurrentWsId } from "@multica/core/platform";
 import { agentListOptions, memberListOptions } from "@multica/core/workspace/queries";
 import { projectListOptions } from "@multica/core/projects/queries";
 import { canAssignAgent } from "../../issues/components/pickers/assignee-picker";
-import { api, dispatchReasonCode } from "@multica/core/api";
+import { api } from "@multica/core/api";
 import {
   isAgentRuntimeBound as hasAgentRuntime,
   useAgentPresenceDetail,
@@ -41,6 +41,7 @@ import {
   hideQueuedChatMessages,
 } from "@multica/core/chat/pending";
 import { useChatDraftRestore } from "./use-chat-draft-restore";
+import { useChatSendFailureToast } from "./use-chat-send-failure-toast";
 import { useChatTaskActions } from "./use-chat-task-actions";
 import { useChatProjectContextSupport } from "./use-chat-project-context-support";
 import { createLogger } from "@multica/core/logger";
@@ -206,6 +207,7 @@ const CHAT_VIRTUOSO_INITIAL_FIRST_ITEM_INDEX = 1_000_000;
 export function useChatController(opts?: { isActive?: boolean }) {
   const isActive = opts?.isActive ?? true;
   const { t } = useT("chat");
+  const toastSendFailure = useChatSendFailureToast();
   const wsId = useWorkspaceId();
   const activeSessionId = useChatStore((s) => s.activeSessionId);
   const selectedAgentId = useChatStore((s) => s.selectedAgentId);
@@ -551,16 +553,7 @@ export function useChatController(opts?: { isActive?: boolean }) {
         apiLogger.error("sendChatMessage.ensureSession.error", err);
         // A revoked invoke permission blocks session create with a structured
         // 403 (MUL-4525) — name the cause instead of a generic failure.
-        const reason = dispatchReasonCode(err);
-        toast.error(
-          reason === "invocation_not_allowed"
-            ? t(($) => $.input.send_blocked_toast)
-            : reason === "agent_runtime_required"
-              ? t(($) => $.input.runtime_required_toast)
-              : reason === "runtime_access_denied"
-                ? t(($) => $.input.runtime_access_denied_toast)
-                : t(($) => $.input.send_failed_toast),
-        );
+        toastSendFailure(err);
         return false;
       }
       if (!sessionId) {
@@ -583,16 +576,7 @@ export function useChatController(opts?: { isActive?: boolean }) {
         // a structured 403 before anything persists (MUL-4525). Surface the
         // specific cause so the user knows it is a permission change, not a
         // transient failure they should retry.
-        const reason = dispatchReasonCode(err);
-        toast.error(
-          reason === "invocation_not_allowed"
-            ? t(($) => $.input.send_blocked_toast)
-            : reason === "agent_runtime_required"
-              ? t(($) => $.input.runtime_required_toast)
-              : reason === "runtime_access_denied"
-                ? t(($) => $.input.runtime_access_denied_toast)
-                : t(($) => $.input.send_failed_toast),
-        );
+        toastSendFailure(err);
         return false;
       }
       apiLogger.info("sendChatMessage.success", {
@@ -678,6 +662,7 @@ export function useChatController(opts?: { isActive?: boolean }) {
       qc,
       setActiveSession,
       t,
+      toastSendFailure,
     ],
   );
 

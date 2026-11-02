@@ -18,6 +18,12 @@ import (
 	"github.com/multica-ai/multica/server/pkg/protocol"
 )
 
+// errAutoRouterUnavailable marks a failure to obtain any decision from the
+// router's local model: a timeout, an unreachable Ollama or a malformed answer.
+// It is distinct from a deliberate no-match, and from the authorization and
+// readiness failures around the decision, which keep their own messages.
+var errAutoRouterUnavailable = errors.New("AutoRouter could not decide")
+
 // resolveAutoRouter only runs for the stable built-in identity. Candidate
 // descriptions never leave the router's selected daemon or grant access.
 func (h *Handler) resolveAutoRouter(r *http.Request, router db.Agent, state string) (db.Agent, error) {
@@ -107,7 +113,7 @@ func (h *Handler) awaitAutoRouterDecision(ctx context.Context, runtimeID pgtype.
 	for {
 		select {
 		case <-ctx.Done():
-			return "", fmt.Errorf("AutoRouter timed out; check the daemon, Ollama and %s", autorouter.Model)
+			return "", fmt.Errorf("%w: timed out; check the daemon, Ollama and %s", errAutoRouterUnavailable, autorouter.Model)
 		case <-ticker.C:
 			decision, err := h.Queries.GetAutoRouterDecision(ctx, id)
 			if err != nil {
@@ -121,7 +127,10 @@ func (h *Handler) awaitAutoRouterDecision(ctx context.Context, runtimeID pgtype.
 				return "", err
 			}
 			if result.Error != "" {
-				return "", errors.New(result.Error)
+				if result.NoMatch {
+					return "", fmt.Errorf("%w: %s", autorouter.ErrNoMatch, result.Error)
+				}
+				return "", fmt.Errorf("%w: %s", errAutoRouterUnavailable, result.Error)
 			}
 			return result.AgentID, nil
 		}

@@ -24,6 +24,8 @@
     "send_blocked_toast": "訊息未傳送——你已沒有該智慧體的使用權限",
     "runtime_required_toast": "訊息未傳送——請先為該智慧體繫結執行時",
     "runtime_access_denied_toast": "訊息未傳送——該智慧體無法在其私有執行時上執行。請將該執行時設為公開，或將智慧體重新繫結/複製到其所有者可用的執行時",
+    "autorouter_no_match_toast": "訊息未傳送——AutoRouter 未能為該請求選出合適的智慧體。請自行選擇智慧體",
+    "autorouter_unavailable_toast": "訊息未傳送——AutoRouter 的本機模型沒有回應。請檢查其執行時上的 Ollama 後重試",
     "attachment_bind_failed_toast": "訊息已傳送，但檔案未能附加。請稍後重試。",
     "add_tooltip": "新增",
     "upload_file": "圖片或檔案",
